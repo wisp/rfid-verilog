@@ -1,0 +1,11 @@
+Copyright 2010 University of Washington
+License: http://creativecommons.org/licenses/by/3.0/
+
+Original author: Dan Yeager, University of Washington
+
+This code is split into two separate branches:
+ - master: every READ command causes a sample.
+ - fifo: the ADC interface has a FIFO.
+
+TODO: merge master and fifo branches and use Verilog `ifdef <...> `endif to
+select between versions at compile time.
