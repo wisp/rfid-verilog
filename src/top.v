@@ -22,8 +22,7 @@
 //    and WRITE (response to WRITE packet).
 
 module top(reset, clk, demodin, modout, // regular IO
-           adc_sample_ctl, adc_sample_clk, adc_sample_datain,    // adc connections
-           msp_sample_ctl, msp_sample_clk, msp_sample_datain, // msp430 connections
+           fifo_nextout, fifo_datain, fifo_start, fifo_repeat,    // fifo connections
            uid_byte_in, uid_addr_out, uid_clk_out,
            writedataout, writedataclk, 
            use_uid, use_q, comm_enable,
@@ -44,13 +43,12 @@ module top(reset, clk, demodin, modout, // regular IO
   output [3:0] uid_addr_out;
   output       uid_clk_out;
 
-  // ADC connections
-  input  adc_sample_datain;
-  output adc_sample_clk, adc_sample_ctl;
+  // FIFO Connections
+  output       fifo_nextout, fifo_repeat, fifo_start;
+  input [7:0]  fifo_datain;
+  wire  [7:0]  fifo_readwords;
 
   // MSP430 connections
-  input  msp_sample_datain;
-  output msp_sample_clk, msp_sample_ctl;
   output writedataout, writedataclk;
 
   // Debugging IO
@@ -138,21 +136,6 @@ module top(reset, clk, demodin, modout, // regular IO
   assign readbitclk = (bitsrcselect == BITSRC_READ) ? txbitclk : 1'b0;
   assign uidbitclk  = (bitsrcselect == BITSRC_UID ) ? txbitclk : 1'b0;
 
-  // MUX connection from READ to MSP or ADC
-  wire readfrommsp;
-  wire readfromadc = !readfrommsp;
-  wire read_sample_ctl, read_sample_clk, read_sample_datain;
-
-  // ADC connections
-  assign adc_sample_ctl     = read_sample_ctl    & readfromadc;
-  assign adc_sample_clk     = read_sample_clk    & readfromadc;
-
-  // MSP430 connections
-  assign msp_sample_ctl     = read_sample_ctl    & readfrommsp;
-  assign msp_sample_clk     = read_sample_clk    & readfrommsp;
-
-  assign read_sample_datain = readfromadc ? adc_sample_datain : msp_sample_datain;
-
   // Serial debug interface for viewing registers:
   reg [3:0] debug_address;
   reg debug_out;
@@ -163,9 +146,24 @@ module top(reset, clk, demodin, modout, // regular IO
       debug_address <= debug_address + 4'd1;
     end
   end
-  always @ (debug_address) begin
+  always @ (debug_address or 
+            packet_complete or 
+            cmd_complete or 
+            handlematch or 
+            docrc or 
+            rx_en or 
+            tx_en or 
+            bitout or 
+            bitclk or 
+            bitout or 
+            rngbitin or 
+            rx_overflow or 
+            tx_done or 
+            txsetupdone or 
+            modout or 
+            fifo_nextout) begin
   case(debug_address)
-    0:  debug_out = packet_complete;
+    0:  debug_out = fifo_nextout;
     1:  debug_out = cmd_complete;
     2:  debug_out = handlematch;
     3:  debug_out = docrc;
@@ -177,8 +175,8 @@ module top(reset, clk, demodin, modout, // regular IO
     9:  debug_out = rx_overflow;
     10: debug_out = tx_done;
     11: debug_out = txsetupdone;
-    12: debug_out = 1'b0;
-    13: debug_out = 1'b1;
+    12: debug_out = modout;
+    13: debug_out = packet_complete;
     14: debug_out = 1'b0;
     15: debug_out = 1'b1;
     default: debug_out = 1'b0;
@@ -190,8 +188,9 @@ module top(reset, clk, demodin, modout, // regular IO
   controller U_CTL (reset, clk, rx_overflow, rx_cmd, currentrn, currenthandle,
                     packet_complete, txsetupdone, tx_done, 
                     rx_en, tx_en, docrc, handlematch,
-                    bitsrcselect, readfrommsp, readwriteptr, rx_q, rx_updn,
-                    use_uid, use_q, comm_enable);
+                    bitsrcselect, rx_q, rx_updn,
+                    use_uid, use_q, comm_enable,
+                    readwords, fifo_readwords, readwriteptr, fifo_repeat);
 
   txsettings U_SET (reset, trcal_in,  m_in,  dr_in,  trext_in, query_complete,
                            trcal_out, m_out, dr_out, trext_out);
@@ -207,9 +206,10 @@ module top(reset, clk, demodin, modout, // regular IO
 
   rng       U_RNG  (tx_reset, reset, rngbitin, rngbitinclk, rngbitclk, rngbitsrc, rngdatadone, currentrn);
   epc       U_EPC  (tx_reset, epcbitclk, epcbitsrc, epcdatadone);
-  read      U_READ (tx_reset, readbitclk, readbitsrc, readdatadone, 
-                    read_sample_ctl, read_sample_clk, read_sample_datain, 
-                    currenthandle);
+  readfifo  U_READ (tx_reset, readbitclk, readbitsrc, readdatadone, 
+                    fifo_nextout, fifo_datain, fifo_start, 
+                    currenthandle, fifo_readwords);
+  
   uid       U_UID  (tx_reset, uidbitclk, uidbitsrc, uiddatadone, 
                     uid_byte_in, uid_addr_out, uid_clk_out);
 

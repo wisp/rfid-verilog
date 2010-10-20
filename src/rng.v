@@ -25,7 +25,7 @@ reg [3:0] bitoutcounter;
 /*
 // test setup for checking functionality.
 wire [15:0] fixedrn;
-assign fixedrn = 16'h0001;
+assign fixedrn = 16'h0000;
 assign handle[15:0] = fixedrn[15:0];
 assign rngbitout    = fixedrn[bitoutcounter];
 */

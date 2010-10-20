@@ -1,8 +1,7 @@
 
 // Copyright 2010 University of Washington
 // License: http://creativecommons.org/licenses/by/3.0/
-
-
+// Dan Yeager
 
 module counter10 (clk, reset, enable, count, overflow);
 output [9:0] count;
