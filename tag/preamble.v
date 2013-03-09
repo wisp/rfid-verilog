@@ -34,9 +34,9 @@ always @ (posedge clk or posedge reset) begin
       if (bitcount == 0) begin
         out       <= 0;
         violation <= 0;
-      end else if (bitcount == 12 & trext) begin
+      end else if (bitcount == 12 & ~trext) begin
         out       <= 0;
-        violation <= 1;
+        violation <= 0;
       end else if (bitcount <= 16) begin
         out       <= 0;
         violation <= 1;
